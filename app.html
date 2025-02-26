@@ -1,0 +1,50 @@
+from flask import Flask, render_template, request, redirect, url_for
+from flask_mail import Mail, Message
+import random
+import string
+
+app = Flask(__name__)
+
+# Налаштування Flask-Mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'your_email@gmail.com'  # замініть на вашу пошту
+app.config['MAIL_PASSWORD'] = 'your_password'  # замініть на ваш пароль
+mail = Mail(app)
+
+# Функція для генерації випадкового коду
+def generate_confirmation_code():
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+
+# Головна сторінка та форма реєстрації
+@app.route('/', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        # Генерація коду підтвердження
+        confirmation_code = generate_confirmation_code()
+
+        # Надсилання підтвердження на електронну пошту
+        msg = Message('Підтвердження реєстрації', sender='your_email@gmail.com', recipients=[email])
+        msg.body = f"Ваш код підтвердження: {confirmation_code}"
+        mail.send(msg)
+
+        return redirect(url_for('confirm', code=confirmation_code, email=email))
+
+    return render_template('register.html')
+
+# Сторінка для введення коду підтвердження
+@app.route('/confirm/<code>/<email>', methods=['GET', 'POST'])
+def confirm(code, email):
+    if request.method == 'POST':
+        entered_code = request.form['confirmation_code']
+        if entered_code == code:
+            return "Ваша реєстрація підтверджена!"
+        else:
+            return "Невірний код підтвердження. Спробуйте ще раз."
+
+    return render_template('confirm.html', email=email)
+
+if __name__ == '__main__':
+    app.run(debug=True)
